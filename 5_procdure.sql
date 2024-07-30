@@ -279,6 +279,7 @@ as
 -- 
 exec themsach 1009 , N'Lão Hạc',1009,1009,'1943-01-01',55,N'Truyện ngắn về cuộc đời của Lão Hạc',N'Truyện Ngắn '
 
-
+-- 1. Thủ tục thêm mới sách vào bảng 'Sach', 
+--nếu sách đã tồn tại thì chỉ cần cập nhật số lượng sách ở bảng sách, tác giả, nhà xuất bản hiện có.
 
 

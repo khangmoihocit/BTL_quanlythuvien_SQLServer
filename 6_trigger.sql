@@ -53,7 +53,7 @@ begin
 	deallocate ChiTietMuonSachCursor
 end
 
-insert into TraSach(iMaMuonSach, iMaNV, dNgayTra, sTinhTrang) values (10000, 1000, '2024-7-10', N'Tốt');
+insert into TraSach(iMaMuonSach, iMaNV, dNgayTra, sTinhTrang) values (10000, 1001, '2025-7-10', N'Tốt');
 
 --3. Khi 1 bản ghi sách được thêm, xóa thì số lượng sách của từng nhà xuất bản sẽ cập nhật theo
 --thêm cột số lượng sách cho bảng nhà xuất bản
@@ -96,6 +96,18 @@ begin
 end
 insert into MuonSach(iMaDocGia, iMaNV, dNgayMuon, dNgayTra) values(1000, 1000, '2024-7-5', '2024-7-9');
 insert into TraSach(iMaMuonSach, iMaNV, dNgayTra, sTinhTrang) values(10010, 1000, '2024-7-11', N'tốt');
+select * from MuonSach;
+select * from Sach;
+select * from ChiTietMuonSach;
+select * from TraSach;
+select * from NhaXuatBan;
+select * from PhieuPhat
+order by iMaPhieuPhat desc ;
+
+select * from TacGia;
+select * from DocGia;
+select * from NhanVien;
+select * from DanhGia;
 --5. Khi thay đổi hệ số lương hoặc lương cơ bản của nhân viên, tự động tính lại tổng số lương
 --thêm cột tổng số lương cho bảng NhanVien
 alter table NhanVien
@@ -115,9 +127,8 @@ begin
 		where NhanVien.iMaNV = (select top 1 iMaNV from inserted)
 	end
 end
-
 update NhanVien
-set fHeSoLuong = 3
+set fHeSoLuong = 5
 where imanv = 1000
 
 --6. khi 1 độc giả bị xóa thì các dữ liệu mượn sách, trả sách,đánh giá,... của độc giả này cũng sẽ bị xóa theo
@@ -141,13 +152,116 @@ end
 
 delete DocGia where iMaDocGia = 1002;
 
---7. 
-select * from Sach;
-select * from ChiTietMuonSach;
-select * from TraSach;
-select * from NhaXuatBan;
-select * from TacGia;
-select * from MuonSach;
-select * from DocGia;
-select * from NhanVien;
-select * from DanhGia;
+--7. Xoá dữ liệu mượn sách . Xoá toàn bộ thông tin liên quan từ Chi Tiết , Trả Sách , Phiếu Phạt
+Create trigger trgXoadlMuonSach
+on MuonSach 
+instead of delete
+as
+begin
+Declare @iMaMuonSach int = (select top 1 iMaMuonSach from inserted)
+declare @imaTrasach int
+if exists (select * from TraSach where iMaMuonSach = @iMaMuonSach)
+begin
+select @imaTrasach =(select iMaTraSach from TraSach where iMaMuonSach = @iMaMuonSach)
+delete PhieuPhat 
+where iMaTraSach =@imaTrasach
+delete ChiTietMuonSach
+where iMaMuonSach= @iMaMuonSach
+delete TraSach 
+where iMaMuonSach = @iMaMuonSach
+delete MuonSach
+where iMaMuonSach= @iMaMuonSach
+end
+else 
+delete MuonSach
+where iMaMuonSach= @iMaMuonSach
+end
+drop trigger trgXoadlMuonSach
+delete MuonSach
+where iMaMuonSach = 10010
+  
+ -- 8. Nếu insert bảng sách mà bị trùng mà sách thì sẽ tăng số lượng sách đó .
+create trigger trgThemSach
+on Sach
+after insert 
+as
+  begin 
+	declare @imaNXb int , @sTenSach nvarchar(200) , @SoLuong int 
+	select @imaNXb = (select top 1 iMaNXB from inserted  ) ,
+			@sTenSach = (select top 1 sTenSach from inserted),
+			@SoLuong =(select top 1 iSoLuong from inserted)
+	if exists (select * from Sach where sTenSach =@sTenSach and iMaNXB = @imaNXb)
+	begin
+		update Sach
+		set iSoLuong = iSoLuong + @SoLuong 
+		where sTenSach =@sTenSach and iMaNXB = @imaNXb
+		print N'Đã Tăng Số Lượng Sách '
+	end
+	else 
+		insert into Sach (sTenSach ,iMaNXB ,iMaTacGia ,dNgayXuatBan,iSoLuong,sMoTa,sTheLoaiSach)
+		select sTenSach ,iMaNXB ,iMaTacGia ,dNgayXuatBan,iSoLuong,sMoTa,sTheLoaiSach from inserted
+ end
+
+drop trigger trgThemSach
+insert into Sach
+values(N'Cho tôi xin một vé đi tuổi thơ', 1000, 1000, '2008-11-01', 1, N'Sách thiếu nhi về tuổi thơ', N'Thiếu Nhi')
+select * from sach 
+
+
+--9- Ngày trả sách phải lớn hơn hoặc bằng ngày mượn
+create trigger check_ngay
+on TraSach
+after insert 
+as
+begin
+	declare @dNgayTra date
+	declare @dNgayMuon date
+	select @dNgayTra = dNgaytra from inserted
+	select @dNgayMuon = dNgayTra from MuonSach
+	if @dNgayTra<@dNgayMuon
+		raiserror('ngay tra phai lon hon ngay muon',16,1)
+		rollback tran
+
+end
+
+select * from MuonSach
+select * from TraSach
+insert into TraSach
+values (10011,1001,'2024-07-01','tot')
+
+
+--10 Tự động tính số ngày trả sách muộn của sinh viên 
+-- thêm cột số ngày muộn vào bảng trasach
+alter table TraSach add songaymuon int
+
+create trigger updatengaymuon
+on TraSach
+after insert , update
+as
+begin
+	declare @songaymuon int
+	declare @dNgayTra date
+	declare @dNgayMuon date 
+
+	SELECT TOP 1 @dNgayMuon = dNgayTra
+    FROM MuonSach
+    WHERE iMaMuonSach = (SELECT TOP 1 iMaMuonSach FROM inserted);
+
+	
+	select @dNgayTra = dNgayTra from inserted
+	set @songaymuon = DATEDIFF(DAY, @dNgayMuon, @dNgayTra);
+	if(@dNgayTra>@dNgayMuon)
+		update TraSach
+		set songaymuon = @songaymuon
+		where iMaTraSach=(select iMaTraSach from inserted)
+		
+end
+
+drop trigger updatengaymuon
+select * from MuonSach
+select * from TraSach
+
+update TraSach
+set dNgayTra = '2023-01-15'
+where iMaTraSach = 20000
+

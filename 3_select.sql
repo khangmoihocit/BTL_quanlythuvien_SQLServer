@@ -28,4 +28,35 @@ group by NhanVien.iMaNV , sTenNV
 order by slsachchomuon asc
 -- 10.cho biết lượng đầu sách do  nxb Kim Đồng xb 
 select sum(iSoLuong) as sldausach from Sach join NhaXuatBan on Sach.iMaNXB=NhaXuatBan.iMaNXB
-where NhaXuatBan.sTenNXB=N'NXB Kim Đồng'
+where NhaXuatBan.sTenNXB=N'NXB Kim Đồng';
+
+--11. Cho biết Số lượng sách được mượn trong từng tháng năm 2023
+select month(MuonSach.dNgayMuon) as [tháng (năm 2023)], 
+	   sum(ChiTietMuonSach.iSoLuong) as [số lượng được sách mượn]
+from ChiTietMuonSach inner join Sach on ChiTietMuonSach.iMaSach = Sach.iMaSach
+					 inner join MuonSach on ChiTietMuonSach.iMaMuonSach = MuonSach.iMaMuonSach
+where year(MuonSach.dNgayMuon) = 2023
+group by month(MuonSach.dNgayMuon)
+--12. Cho biết số lượng sách đã đc mượn của từng nhà xuất bản từ tháng 6 năm 2023 đến nay
+select * from MuonSach;
+select * from ChiTietMuonSach;
+select * from Sach;
+select * from NhaXuatBan;
+-- số lượng từng loại sách được mượn từ tháng 5 năm 2023
+create view soluong_sach_muon_5_2023
+as
+select Sach.iMaSach, Sach.sTenSach, sum(ChiTietMuonSach.iSoLuong) as [sl sách đc mượn]
+from ChiTietMuonSach inner join Sach on ChiTietMuonSach.iMaSach = Sach.iMaSach
+					 inner join MuonSach on ChiTietMuonSach.iMaMuonSach = MuonSach.iMaMuonSach
+where year(MuonSach.dNgayMuon) >= 2023 and month(MuonSach.dNgayMuon) >= 5
+group by Sach.iMaSach, Sach.sTenSach
+
+--sl sách được mượn của từng nhà xuất bản
+select NhaXuatBan.sTenNXB, sum(soluong_sach_muon_5_2023.[sl sách đc mượn])
+from Sach inner join NhaXuatBan on Sach.iMaNXB = NhaXuatBan.iMaNXB
+		  inner join soluong_sach_muon_5_2023 on Sach.iMaSach = soluong_sach_muon_5_2023.iMaSach
+group by NhaXuatBan.sTenNXB
+--13. Sách đc mượn 1 lần vào năm 2023
+--14. Tính tổng số tiền phạt của từng độc giả
+
+
